@@ -1,0 +1,53 @@
+---
+title: "Dangerous driving behavior"
+output: 
+  flexdashboard::flex_dashboard
+runtime: shiny
+---
+```{r}
+data<- read.csv("D:/BILAL/output_taxi.csv", sep = ",")
+
+```
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DT)
+startData <- data
+GBChoices <- as.list(names(startData))
+names(GBChoices) <- paste(names(startData),map(startData,~length(unique(.x))))
+
+updateData <- reactive(
+  startData %>% group_by(!!! rlang::syms(input$GB)) %>% summarise_if(is.numeric,sum,na.rm=T))
+```
+
+Column {.sidebar}
+------------------------------------------------------------------
+```{r}
+selectInput(inputId = "GB",label = "Group By",choices = GBChoices)
+selectInput(inputId = "Metric",label = "Metric",choices = names(select_if(startData,is.numeric)))
+```
+
+Column 
+------------------------------------------------------------------
+
+### Plot
+```{r}
+renderPlot({
+ updateData() %>% 
+  ggplot(aes(x=!! rlang::sym(input$GB),y=!! rlang::sym(input$Metric),fill=!! rlang::sym(input))) +
+  geom_col()
+})
+```
+
+
+### Table 
+```{r}
+renderDT(
+  updateData(), rownames = F, extensions = 'Buttons', filter="top", editable=T,
+  options = list(
+    dom = 'Blfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+    lengthMenu = list(c(10,50,100,-1),c(10,50,100,"All"))
+  )
+)
+```
